@@ -16,7 +16,7 @@ import platform
 import subprocess
 
 # ── App va konfiguratsiyani yuklash ────────────────────────────────────────
-from app.config import (app, CFG, NGROK_OK, PSUTIL_OK, QRCODE_OK,
+from app.config import (app as flask_app, CFG, NGROK_OK, PSUTIL_OK, QRCODE_OK,
                          _active_mode, _c, R, G, Y, C, M, W)
 from app.database import setup_db
 
@@ -57,7 +57,7 @@ def print_menu():
 def run_srv(host):
     import logging
     logging.getLogger("werkzeug").setLevel(logging.WARNING)
-    app.run(host=host, port=CFG["PORT"], debug=False, use_reloader=False, threaded=True)
+    flask_app.run(host=host, port=CFG["PORT"], debug=False, use_reloader=False, threaded=True)
 
 
 def show_info(mode):
