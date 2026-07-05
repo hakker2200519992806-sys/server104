@@ -7,6 +7,9 @@ EDITOR_TMPL = """<!DOCTYPE html>
 <title>Muharrir — NAME</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/eclipse.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/lint/lint.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.css">
@@ -17,6 +20,9 @@ EDITOR_TMPL = """<!DOCTYPE html>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/keymap/vim.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/keymap/emacs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/5.1.0/diff.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.js"></script>
@@ -137,6 +143,12 @@ li.CodeMirror-hint-active{background:#7c6fff !important;color:#fff !important}
   <button class="btn bgh bsm" onclick="openTerminal()">💻 Terminal</button>
   <button class="btn bgh bsm" onclick="generatePWA()">📱 PWA</button>
   <button class="btn bgh bsm" onclick="generateReadme()">📑 README</button>
+  <button class="btn bgh bsm" onclick="toggleTheme()">🌓 Tema</button>
+  <select id="keymapSelect" onchange="setKeymap(this.value)" style="padding:4px 8px;background:var(--bg);border:1px solid var(--brd);border-radius:5px;color:var(--tx);font-size:.72rem"><option value="default">Default</option><option value="vim">Vim</option><option value="emacs">Emacs</option></select>
+  <button class="btn bgh bsm" onclick="openDiffView()">📊 Diff</button>
+  <button class="btn bgh bsm" onclick="forkProject()">🍴 Fork</button>
+  <button class="btn bgh bsm" onclick="openEnvPanel()">🔑 .env</button>
+  <button class="btn bgh bsm" onclick="openNpmPanel()">📦 NPM</button>
   <a href="/projects/download/UUID" class="btn bgh bsm">⬇ ZIP</a>
   <span class="khint" title="Emmet: div.foo#bar, ul>li*3, div+p, (div>p)*2, a{Matn} kabi qisqartmalarni yozib Tab yoki Enter bosing&#10;CSS: w100%, h50vh, m10-20, p0, df, jcc, aic, fxd, tac kabi qisqartmalar ham qo'llab-quvvatlanadi&#10;Ctrl+Space — takliflar ro'yxati&#10;Ctrl+P — Quick Open&#10;Ctrl+Shift+F — global qidiruv&#10;Ctrl+S — saqlash&#10;Ctrl+Enter — ishga tushirish&#10;Ctrl+/ — izohga olish&#10;Shift+Alt+F — formatlash&#10;Alt+Click — qo'shimcha kursor (multi-cursor)&#10;O'ng tugma — fayl daraxtida yangi fayl/papka/nomini o'zgartirish/o'chirish&#10;Sudrab tashlash — faylni boshqa papkaga ko'chirish">⌨ Tugmalar</span>
   <a href="/projects" class="btn bgh bsm">← Loyihalar</a>
@@ -1838,5 +1850,130 @@ document.addEventListener('DOMContentLoaded', function(){
   setupResizer();
   loadAll();
   window.addEventListener('resize', drawMinimap);
+});
+/* ══════════════════════════════════════════════════════════════════════
+   VIM/EMACS KEYBINDING + DARK/LIGHT TEMA + DIFF + FORK + ENV + NPM
+   ══════════════════════════════════════════════════════════════════════ */
+function setKeymap(km){
+  var map = km==='vim'?'vim':(km==='emacs'?'emacs':'default');
+  cm.setOption('keyMap', map);
+  if(cm2) cm2.setOption('keyMap', map);
+  localStorage.setItem('cm_keymap', km);
+  flash('⌨ Keymap: '+km, 'gr');
+}
+(function(){var km=localStorage.getItem('cm_keymap');if(km){document.getElementById('keymapSelect').value=km;}})();
+
+// ── Dark/Light tema ──
+var currentTheme = localStorage.getItem('cm_theme') || 'dracula';
+function toggleTheme(){
+  var themes = ['dracula','material','monokai','eclipse'];
+  var idx = themes.indexOf(currentTheme);
+  currentTheme = themes[(idx+1)%themes.length];
+  cm.setOption('theme', currentTheme);
+  if(cm2) cm2.setOption('theme', currentTheme);
+  localStorage.setItem('cm_theme', currentTheme);
+  // Light tema uchun body rangini o'zgartirish
+  if(currentTheme==='eclipse'){
+    document.body.style.setProperty('--bg','#f5f5f5');
+    document.body.style.setProperty('--surf','#ffffff');
+    document.body.style.setProperty('--card','#ffffff');
+    document.body.style.setProperty('--tx','#333');
+    document.body.style.setProperty('--brd','#ddd');
+  } else {
+    document.body.style.removeProperty('--bg');
+    document.body.style.removeProperty('--surf');
+    document.body.style.removeProperty('--card');
+    document.body.style.removeProperty('--tx');
+    document.body.style.removeProperty('--brd');
+  }
+  flash('🌓 Tema: '+currentTheme, 'gr');
+}
+
+// ── Diff viewer (versiya solishtirish) ──
+function openDiffView(){
+  if(!activePath){flash('⚠ Avval fayl oching','yl');return;}
+  authFetch('/editor/fs/history?uuid=UUID&path='+encodeURIComponent(activePath))
+    .then(function(r){return r.json();}).then(function(d){
+      var hist=d.history||[];
+      if(!hist.length){flash('⚠ Tarix bosh','yl');return;}
+      var oldContent=hist[0].content;
+      var newContent=docsCache[activePath]?docsCache[activePath].getValue():'';
+      var diff=window.Diff?Diff.createPatch(activePath,oldContent,newContent,'Oldingi','Hozirgi'):'Diff kutubxonasi yuklanmadi';
+      var diffHtml=diff.split('\\n').map(function(l){
+        if(l.startsWith('+')&&!l.startsWith('+++')) return '<div style="background:#0a3d2e;color:#22d3a0;padding:1px 8px">'+l.replace(/</g,'&lt;')+'</div>';
+        if(l.startsWith('-')&&!l.startsWith('---')) return '<div style="background:#3b1010;color:#f05d5d;padding:1px 8px">'+l.replace(/</g,'&lt;')+'</div>';
+        if(l.startsWith('@@')) return '<div style="color:#7c6fff;padding:1px 8px;font-weight:600">'+l.replace(/</g,'&lt;')+'</div>';
+        return '<div style="padding:1px 8px;color:#5c6890">'+l.replace(/</g,'&lt;')+'</div>';
+      }).join('');
+      var w=window.open('','_blank','width=800,height=600');
+      w.document.write('<html><head><title>Diff — '+activePath+'</title><style>body{background:#0d0f18;font-family:monospace;font-size:12px;padding:20px;margin:0}</style></head><body>'+diffHtml+'</body></html>');
+    });
+}
+
+// ── Fork loyiha ──
+function forkProject(){
+  if(!confirm('Bu loyihaning nusxasini yaratmoqchimisiz (Fork)?')) return;
+  authFetch('/api/project/fork/UUID',{method:'POST'}).then(function(r){return r.json();}).then(function(d){
+    if(d.ok){flash('✓ Fork yaratildi!','gr');setTimeout(function(){window.location='/editor/'+d.new_uuid;},1000);}
+    else flash('✗ '+(d.error||'Xato'),'rd');
+  });
+}
+
+// ── Environment variables (.env) paneli ──
+function openEnvPanel(){
+  var html='<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:999999;display:flex;align-items:center;justify-content:center" id="envBg" onclick="if(event.target.id===\\'envBg\\')this.remove()"><div style="background:#1c2136;border:1px solid #252d45;border-radius:12px;width:500px;max-height:70vh;overflow:hidden;display:flex;flex-direction:column"><div style="padding:12px 14px;border-bottom:1px solid #252d45;display:flex;align-items:center"><b style="color:#fff">🔑 Environment Variables</b><button onclick="this.closest(\\'#envBg\\').remove()" style="margin-left:auto;background:transparent;border:1px solid #252d45;color:#f05d5d;border-radius:5px;padding:3px 8px;cursor:pointer">✕</button></div><div id="envList" style="flex:1;overflow-y:auto;padding:12px"></div><div style="padding:12px;border-top:1px solid #252d45;display:flex;gap:6px"><input id="envKey" placeholder="KEY" style="flex:1;padding:6px;background:#0d0f18;border:1px solid #252d45;border-radius:5px;color:#d4daf0;font-family:monospace"><input id="envVal" placeholder="value" style="flex:2;padding:6px;background:#0d0f18;border:1px solid #252d45;border-radius:5px;color:#d4daf0;font-family:monospace"><button onclick="addEnvVar()" style="background:#7c6fff;color:#fff;border:none;border-radius:5px;padding:6px 12px;cursor:pointer">+</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',html);
+  loadEnvVars();
+}
+function loadEnvVars(){
+  authFetch('/api/env/UUID').then(function(r){return r.json();}).then(function(d){
+    var el=document.getElementById('envList');if(!el)return;
+    el.innerHTML=(d.vars||[]).map(function(v){
+      return '<div style="display:flex;gap:6px;padding:4px 0;align-items:center;border-bottom:1px solid #252d45"><code style="color:#22d3a0;flex:1">'+v.key+'</code><code style="color:#5c6890;flex:2">'+v.value+'</code><button onclick="delEnvVar(\\''+v.key+'\\')" style="background:transparent;border:none;color:#f05d5d;cursor:pointer">🗑</button></div>';
+    }).join('')||'<p style="color:#5c6890;text-align:center;padding:20px">Hali env yoq</p>';
+  });
+}
+function addEnvVar(){
+  var k=document.getElementById('envKey').value.trim();
+  var v=document.getElementById('envVal').value.trim();
+  if(!k)return;
+  authFetch('/api/env/UUID',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:k,value:v})}).then(function(){document.getElementById('envKey').value='';document.getElementById('envVal').value='';loadEnvVars();});
+}
+function delEnvVar(k){
+  authFetch('/api/env/UUID/'+encodeURIComponent(k),{method:'DELETE'}).then(function(){loadEnvVars();});
+}
+
+// ── NPM CDN simulator ──
+function openNpmPanel(){
+  var html='<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:999999;display:flex;align-items:center;justify-content:center" id="npmBg" onclick="if(event.target.id===\\'npmBg\\')this.remove()"><div style="background:#1c2136;border:1px solid #252d45;border-radius:12px;width:520px;max-height:70vh;overflow:hidden;display:flex;flex-direction:column"><div style="padding:12px 14px;border-bottom:1px solid #252d45;display:flex;align-items:center"><b style="color:#fff">📦 NPM Paketlar (CDN)</b><button onclick="this.closest(\\'#npmBg\\').remove()" style="margin-left:auto;background:transparent;border:1px solid #252d45;color:#f05d5d;border-radius:5px;padding:3px 8px;cursor:pointer">✕</button></div><div style="padding:12px"><input id="npmPkg" placeholder="paket nomi (masalan: lodash, axios, three)" style="width:100%;padding:8px;background:#0d0f18;border:1px solid #252d45;border-radius:6px;color:#d4daf0;margin-bottom:8px"><button onclick="installNpm()" style="background:#7c6fff;color:#fff;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-weight:600">📥 Ornatish (CDN)</button><p style="color:#5c6890;font-size:.75rem;margin-top:8px">esm.sh orqali — index.html ga script teg qoshiladi</p></div><div id="npmInstalled" style="padding:0 12px 12px;overflow-y:auto;max-height:40vh"></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',html);
+  loadNpmPkgs();
+}
+function installNpm(){
+  var pkg=document.getElementById('npmPkg').value.trim();
+  if(!pkg)return;
+  authFetch('/api/npm/install/UUID',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({package:pkg})}).then(function(r){return r.json();}).then(function(d){
+    if(d.ok){flash('✓ '+pkg+' ornatildi (CDN)','gr');document.getElementById('npmPkg').value='';loadNpmPkgs();loadAll();}
+    else flash('✗ '+(d.error||'Xato'),'rd');
+  });
+}
+function loadNpmPkgs(){
+  authFetch('/api/npm/list/UUID').then(function(r){return r.json();}).then(function(d){
+    var el=document.getElementById('npmInstalled');if(!el)return;
+    el.innerHTML=(d.packages||[]).map(function(p){
+      return '<div style="display:flex;gap:6px;padding:6px;border-bottom:1px solid #252d45;align-items:center"><span style="color:#22d3a0;font-weight:600">'+p+'</span><code style="color:#5c6890;font-size:.7rem;flex:1">esm.sh/'+p+'</code><button onclick="uninstallNpm(\\''+p+'\\')" style="background:transparent;border:none;color:#f05d5d;cursor:pointer;font-size:.75rem">✗</button></div>';
+    }).join('')||'<p style="color:#5c6890;text-align:center;padding:12px">Hali paket yoq</p>';
+  });
+}
+function uninstallNpm(pkg){
+  authFetch('/api/npm/uninstall/UUID',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({package:pkg})}).then(function(){loadNpmPkgs();loadAll();});
+}
+
+// Sahifa yuklanganda saqlangan keymapni qo'llash
+document.addEventListener('DOMContentLoaded',function(){
+  var savedKm=localStorage.getItem('cm_keymap');
+  if(savedKm&&savedKm!=='default'){setTimeout(function(){setKeymap(savedKm);},500);}
+  var savedTheme=localStorage.getItem('cm_theme');
+  if(savedTheme){setTimeout(function(){currentTheme=savedTheme;cm.setOption('theme',savedTheme);if(cm2)cm2.setOption('theme',savedTheme);},500);}
 });
 </script></body></html>"""
