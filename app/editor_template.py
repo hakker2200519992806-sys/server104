@@ -1257,7 +1257,44 @@ function toggleSplit(){
   host2.style.display = splitOn ? 'block' : 'none';
   if (splitOn && !cm2){
     cm2 = CodeMirror(host2, {value:'', mode:'htmlmixed', theme:'dracula', lineNumbers:true,
-      lineWrapping:true, tabSize:2, indentUnit:2, matchBrackets:true, styleActiveLine:true});
+      lineWrapping:true, tabSize:2, indentUnit:2, matchBrackets:true, autoCloseBrackets:true, styleActiveLine:true,
+      gutters:['CodeMirror-linenumbers','CodeMirror-lint-markers'],
+      extraKeys: {
+        'Ctrl-Space': function(cx){ CodeMirror.showHint(cx, customHint, {completeSingle:false}); },
+        'Tab': function(cx){
+          if (cx.state.completionActive){
+            var w = cx.getRange({line:cx.getCursor().line,ch:0}, cx.getCursor());
+            var m = w.match(/[a-zA-Z0-9._#\\[\\]{}*+>^()$=:"'%,!\\/-]+$/);
+            if (m && looksLikeEmmet(m[0])){ cx.closeHint(); if (trySnippetExpand(cx)) return; }
+            return CodeMirror.Pass;
+          }
+          if (trySnippetExpand(cx)) return;
+          if (cx.somethingSelected()){ cx.execCommand('indentMore'); return; }
+          cx.replaceSelection('  ');
+        },
+        'Enter': function(cx){
+          if (cx.state.completionActive) return CodeMirror.Pass;
+          if ((activeTab==='h'||activeTab==='c') && trySnippetExpand(cx)) return;
+          return CodeMirror.Pass;
+        },
+        'Ctrl-S': function(){ saveActive(); return false; },
+        'Cmd-S': function(){ saveActive(); return false; },
+        'Ctrl-Enter': function(){ runCode(); },
+        'Cmd-Enter': function(){ runCode(); },
+        'Shift-Alt-F': function(){ formatActive(); },
+        'Ctrl-/': 'toggleComment',
+        'Cmd-/': 'toggleComment'
+      }
+    });
+    cm2.on('inputRead', function(cx, change){
+      if (change.text.length===1 && /[a-zA-Z]/.test(change.text[0])){
+        var cur = cx.getCursor();
+        var before = cx.getLine(cur.line).slice(0, cur.ch);
+        var m = before.match(/[a-zA-Z0-9._#\\[\\]{}*+>^()$=:"'%,!\\/-]+$/);
+        if (m && looksLikeEmmet(m[0])) return;
+        CodeMirror.showHint(cx, customHint, {completeSingle:false});
+      }
+    });
   }
   renderTabs();
   setTimeout(function(){ cm.refresh(); if(cm2) cm2.refresh(); }, 50);
