@@ -126,34 +126,50 @@ li.CodeMirror-hint-active{background:#7c6fff !important;color:#fff !important}
   <span class="khint" id="autosaveInd" title="Avtosaqlash holati">💾 —</span>
   <button class="btn bp bsm" onclick="runCode()" title="Ctrl+Enter">▶ Run</button>
   <button class="btn bg bsm" onclick="saveActive()" title="Ctrl+S">💾 Saqlash</button>
-  <button class="btn bgh bsm" onclick="formatActive()" title="Shift+Alt+F">🧹 Formatlash</button>
-  <label class="khint" style="cursor:pointer"><input type="checkbox" id="fmtOnSave" style="width:auto;vertical-align:middle"> Saqlashda formatlash</label>
-  <button class="btn bgh bsm" onclick="openQuickOpen()" title="Ctrl+P">📂 Quick Open</button>
-  <button class="btn bgh bsm" onclick="openGlobalSearch()" title="Ctrl+Shift+F">🔍 Global qidiruv</button>
   <button class="btn bgh bsm" onclick="toggleSplit()">⊞ Split</button>
-  <button class="btn bgh bsm" onclick="toggleConsole()">🖥 Konsol</button>
-  <button class="btn bgh bsm" onclick="openSnippets()">✨ Snippetlar</button>
-  <button class="btn bgh bsm" onclick="openHistory()">🕘 Tarix</button>
-  <button class="btn bgh bsm" onclick="openBackendPanel()">🐍 Backend</button>
-  <button class="btn bgh bsm" onclick="openHelpPanel()">❓ Yordam</button>
   <button class="btn bgh bsm" onclick="openChatPanel()">💬 Chat</button>
-  <button class="btn bgh bsm" onclick="openTodoPanel()">🎯 TODO</button>
-  <button class="btn bgh bsm" onclick="openComponentsPanel()">🧩 Komponent</button>
-  <button class="btn bgh bsm" onclick="openColorPicker()">📐 Rang</button>
-  <button class="btn bgh bsm" onclick="openTerminal()">💻 Terminal</button>
-  <button class="btn bgh bsm" onclick="generatePWA()">📱 PWA</button>
-  <button class="btn bgh bsm" onclick="generateReadme()">📑 README</button>
   <button class="btn bgh bsm" onclick="toggleTheme()">🌓 Tema</button>
-  <select id="keymapSelect" onchange="setKeymap(this.value)" style="padding:4px 8px;background:var(--bg);border:1px solid var(--brd);border-radius:5px;color:var(--tx);font-size:.72rem"><option value="default">Default</option><option value="vim">Vim</option><option value="emacs">Emacs</option></select>
-  <button class="btn bgh bsm" onclick="openDiffView()">📊 Diff</button>
-  <button class="btn bgh bsm" onclick="forkProject()">🍴 Fork</button>
-  <button class="btn bgh bsm" onclick="openEnvPanel()">🔑 .env</button>
-  <button class="btn bgh bsm" onclick="openNpmPanel()">📦 NPM</button>
-  <a href="/projects/download/UUID" class="btn bgh bsm">⬇ ZIP</a>
-  <span class="khint" title="Emmet: div.foo#bar, ul>li*3, div+p, (div>p)*2, a{Matn} kabi qisqartmalarni yozib Tab yoki Enter bosing&#10;CSS: w100%, h50vh, m10-20, p0, df, jcc, aic, fxd, tac kabi qisqartmalar ham qo'llab-quvvatlanadi&#10;Ctrl+Space — takliflar ro'yxati&#10;Ctrl+P — Quick Open&#10;Ctrl+Shift+F — global qidiruv&#10;Ctrl+S — saqlash&#10;Ctrl+Enter — ishga tushirish&#10;Ctrl+/ — izohga olish&#10;Shift+Alt+F — formatlash&#10;Alt+Click — qo'shimcha kursor (multi-cursor)&#10;O'ng tugma — fayl daraxtida yangi fayl/papka/nomini o'zgartirish/o'chirish&#10;Sudrab tashlash — faylni boshqa papkaga ko'chirish">⌨ Tugmalar</span>
   <a href="/projects" class="btn bgh bsm">← Loyihalar</a>
   <a href="/preview/UUID" target="_blank" class="btn bgh bsm">👁 To'liq</a>
+  <!-- Asboblar dropdown -->
+  <div style="position:relative;display:inline-block" id="toolsDropWrap">
+    <button class="btn bp bsm" onclick="document.getElementById('toolsDrop').classList.toggle('show')" style="background:#252d45">⚡ Asboblar ▾</button>
+    <div id="toolsDrop" style="display:none;position:absolute;right:0;top:32px;background:#161929;border:1px solid #252d45;border-radius:10px;padding:8px 0;z-index:99999;min-width:220px;box-shadow:0 12px 40px rgba(0,0,0,.5);max-height:70vh;overflow-y:auto">
+      <div style="padding:4px 14px;font-size:.68rem;color:#5c6890;text-transform:uppercase;letter-spacing:.1em">Muharrir</div>
+      <a class="tdi" onclick="formatActive();closeTD()">🧹 Formatlash</a>
+      <a class="tdi" onclick="openQuickOpen();closeTD()">📂 Quick Open</a>
+      <a class="tdi" onclick="openGlobalSearch();closeTD()">🔍 Global qidiruv</a>
+      <a class="tdi" onclick="toggleConsole();closeTD()">🖥 Konsol</a>
+      <a class="tdi" onclick="openSnippets();closeTD()">✨ Snippetlar</a>
+      <a class="tdi" onclick="openHistory();closeTD()">🕘 Tarix</a>
+      <a class="tdi" onclick="openDiffView();closeTD()">📊 Diff</a>
+      <a class="tdi" onclick="openHelpPanel();closeTD()">❓ Yordam</a>
+      <div style="padding:4px 14px;font-size:.68rem;color:#5c6890;text-transform:uppercase;letter-spacing:.1em;margin-top:6px">Loyiha</div>
+      <a class="tdi" onclick="openBackendPanel();closeTD()">🐍 Backend</a>
+      <a class="tdi" onclick="openTodoPanel();closeTD()">🎯 TODO</a>
+      <a class="tdi" onclick="openComponentsPanel();closeTD()">🧩 Komponentlar</a>
+      <a class="tdi" onclick="openColorPicker();closeTD()">📐 Rang</a>
+      <a class="tdi" onclick="openTerminal();closeTD()">💻 Terminal</a>
+      <a class="tdi" onclick="openEnvPanel();closeTD()">🔑 .env</a>
+      <a class="tdi" onclick="openNpmPanel();closeTD()">📦 NPM</a>
+      <div style="padding:4px 14px;font-size:.68rem;color:#5c6890;text-transform:uppercase;letter-spacing:.1em;margin-top:6px">Generatsiya</div>
+      <a class="tdi" onclick="generatePWA();closeTD()">📱 PWA yaratish</a>
+      <a class="tdi" onclick="generateReadme();closeTD()">📑 README yaratish</a>
+      <a class="tdi" onclick="forkProject();closeTD()">🍴 Fork (nusxa)</a>
+      <a class="tdi" href="/projects/download/UUID">⬇ ZIP yuklab olish</a>
+      <div style="padding:4px 14px;font-size:.68rem;color:#5c6890;text-transform:uppercase;letter-spacing:.1em;margin-top:6px">Sozlamalar</div>
+      <a class="tdi" onclick="closeTD()"><label style="cursor:pointer;display:flex;align-items:center;gap:6px"><input type="checkbox" id="fmtOnSave" style="width:auto"> Saqlashda formatlash</label></a>
+      <a class="tdi" onclick="closeTD()"><label style="cursor:pointer;display:flex;align-items:center;gap:6px">⌨ Keymap: <select id="keymapSelect" onchange="setKeymap(this.value)" style="padding:2px 6px;background:#0d0f18;border:1px solid #252d45;border-radius:4px;color:#d4daf0;font-size:.75rem"><option value="default">Default</option><option value="vim">Vim</option><option value="emacs">Emacs</option></select></label></a>
+    </div>
+  </div>
 </div>
+<style>
+#toolsDrop.show{display:block!important}
+.tdi{display:block;padding:7px 14px;font-size:.8rem;color:#d4daf0;cursor:pointer;text-decoration:none;transition:.1s}
+.tdi:hover{background:rgba(124,111,255,.12);color:#fff}
+</style>
+<script>function closeTD(){document.getElementById('toolsDrop').classList.remove('show');}
+document.addEventListener('click',function(e){if(!document.getElementById('toolsDropWrap').contains(e.target))closeTD();});</script>
 <div class="crumb" id="breadcrumb">—</div>
 <div class="ebMain" id="ebMain">
   <aside id="sidebar" oncontextmenu="event.preventDefault();contextTargetPath=null;openCtxMenu(event,null);">
