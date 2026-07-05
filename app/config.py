@@ -79,7 +79,7 @@ CFG = {
     "SECRET":         secrets.token_hex(32),
     "ADMIN_USER":     "admin",
     "ADMIN_PASS":     "Admin123!",
-    "NGROK_TOKEN":    "",
+    "NGROK_TOKEN":    "3G4w2NsMKZQtOuqRkmUoupImBjK_4JMf6K7u4F9Nrtv5Wo41b",
     "TELEGRAM_TOKEN": "",
     "TELEGRAM_CHAT_ID": "",
     "UPLOAD_DIR":     "uploads",
