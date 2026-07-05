@@ -23,6 +23,12 @@ def _csrf_protect():
     sess_tok = session.get("_csrf")
     if request.path in ("/login", "/register"):
         return None
+    # API va editor endpointlari uchun: token bo'lsa tekshir, bo'lmasa o'tkazib yubor
+    # (ular session cookie + SameSite orqali himoyalangan)
+    if request.path.startswith("/api/") or request.path.startswith("/editor/"):
+        if sess_tok and tok and tok != sess_tok:
+            abort(403)
+        return None
     if sess_tok and tok != sess_tok:
         abort(403)
     return None
