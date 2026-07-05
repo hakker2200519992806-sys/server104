@@ -190,3 +190,36 @@ def color_palette():
         "Dark": ["#0d0f18", "#161929", "#1c2136", "#252d45", "#7c6fff", "#22d3a0", "#f05d5d", "#f5c518"],
     }
     return jsonify({"palettes": palettes})
+
+
+
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║              TERMINAL (faqat admin uchun)                                  ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+@app.route("/api/terminal/exec", methods=["POST"])
+@user_req
+def terminal_exec():
+    """Admin uchun server terminalida buyruq bajarish."""
+    import subprocess, os
+    # Faqat admin
+    if not session.get("admin"):
+        return jsonify({"ok": False, "error": "Faqat admin ishlatishi mumkin"}), 403
+    d = request.get_json() or {}
+    cmd = (d.get("command") or "").strip()
+    if not cmd:
+        return jsonify({"ok": False, "error": "Buyruq bo'sh"})
+    # Xavfli buyruqlarni bloklash
+    dangerous = ["rm -rf /", "mkfs", "dd if=", ":(){", "fork bomb", "shutdown", "reboot", "halt",
+                 "format c:", "del /f /s /q"]
+    for dng in dangerous:
+        if dng in cmd.lower():
+            return jsonify({"ok": False, "error": "Bu buyruq taqiqlangan"})
+    try:
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=10, cwd=os.getcwd())
+        output = result.stdout + result.stderr
+        audit("terminal_exec", "command", None, cmd[:200])
+        return jsonify({"ok": True, "output": output[:5000], "returncode": result.returncode})
+    except subprocess.TimeoutExpired:
+        return jsonify({"ok": False, "error": "Buyruq 10 sekundda yakunlanmadi (timeout)"})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)[:300]})
