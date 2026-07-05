@@ -16,6 +16,7 @@ from app.auth import user_req, write_req, csrf_field, get_csrf_token
 from app.utils import (get_ip, log_access, gtok, local_ip, audit,
                         _proj_or_404, _ensure_files, _build_page_html)
 from app.templates import _pg, CSS
+from app.editor_template import EDITOR_TMPL
 
 
 HISTORY_KEEP = 20
@@ -118,18 +119,15 @@ def editor(puuid=None):
     if not proj:
         abort(404)
     _ensure_files(proj["id"])
-    # Minimal editor sahifasi (to'liq editor kodi original server.py dan kelib chiqadi)
+    # To'liq CodeMirror editor shablonini qaytarish
     csrf = get_csrf_token()
-    return f"""<!DOCTYPE html><html lang="uz"><head><meta charset="UTF-8">
-<title>Muharrir — {hm.escape(proj['name'])}</title>
-<style>{CSS} body{{margin:0;padding:20px}}</style></head><body>
-<h2 style="color:#fff">✏️ {hm.escape(proj['name'])}</h2>
-<p class="tm">Editor yuklanmoqda... <a href="/projects">← Loyihalar</a></p>
-<script>
-var CSRF_TOKEN="{csrf}";
-function authFetch(url,opts){{opts=opts||{{}};opts.headers=Object.assign({{'X-CSRF-Token':CSRF_TOKEN}},opts.headers||{{}});return fetch(url,opts);}}
-</script>
-</body></html>"""
+    page = (EDITOR_TMPL
+            .replace("INSERTCSS", CSS)
+            .replace("NAME", hm.escape(proj["name"]))
+            .replace("CSRFTOKEN", csrf)
+            .replace("UUID_NAME", hm.escape(proj["name"]))
+            .replace("UUID", puuid))
+    return page
 
 
 @app.route("/preview/<puuid>")
@@ -301,3 +299,67 @@ def editor_snippets():
 def editor_snippet_delete(sid):
     db_exec("DELETE FROM user_snippets WHERE id=? AND user_id=?", (sid, session["user_id"]), fetch=False)
     return jsonify({"ok": True})
+
+
+
+# ── Backend routes API (editor uchun) ─────────────────────────────────────
+@app.route("/editor/backend/<puuid>", methods=["GET", "POST"])
+@user_req
+def editor_backend(puuid):
+    proj = _proj_or_404(puuid, session["user_id"], session.get("admin"))
+    if request.method == "GET":
+        rows = db_exec("SELECT id,path,method,is_enabled,updated_at FROM project_backend_routes WHERE project_id=? ORDER BY path",
+                       (proj["id"],)) or []
+        return jsonify({"routes": rows})
+    # POST - yangi route qo'shish
+    d = request.get_json() or {}
+    path = (d.get("path") or "").strip().lstrip("/")
+    method = (d.get("method") or "GET").upper()
+    code = d.get("code", "")
+    if not path or not code:
+        return jsonify({"ok": False, "error": "Path va code kerak"})
+    db_exec("""INSERT INTO project_backend_routes (project_id,path,method,code) VALUES (?,?,?,?)
+               ON CONFLICT(project_id,path,method) DO UPDATE SET code=excluded.code, updated_at=datetime('now')""",
+            (proj["id"], "/" + path, method, code), fetch=False)
+    return jsonify({"ok": True})
+
+
+@app.route("/editor/backend/<puuid>/<int:rid>", methods=["PUT", "DELETE"])
+@user_req
+@write_req
+def editor_backend_item(puuid, rid):
+    proj = _proj_or_404(puuid, session["user_id"], session.get("admin"))
+    if request.method == "DELETE":
+        db_exec("DELETE FROM project_backend_routes WHERE id=? AND project_id=?", (rid, proj["id"]), fetch=False)
+        return jsonify({"ok": True})
+    # PUT - toggle is_enabled
+    d = request.get_json() or {}
+    is_enabled = 1 if d.get("is_enabled") else 0
+    db_exec("UPDATE project_backend_routes SET is_enabled=? WHERE id=? AND project_id=?",
+            (is_enabled, rid, proj["id"]), fetch=False)
+    return jsonify({"ok": True})
+
+
+# ── Rasm yuklash (editor drag&drop) ───────────────────────────────────────
+@app.route("/editor/upload-image/<puuid>", methods=["POST"])
+@user_req
+@write_req
+def editor_upload_image(puuid):
+    from werkzeug.utils import secure_filename
+    from pathlib import Path as PPath
+    proj = q1("SELECT * FROM projects WHERE uuid=?", (puuid,))
+    if not proj:
+        return jsonify({"ok": False}), 404
+    f = request.files.get("image")
+    if not f or not f.filename:
+        return jsonify({"ok": False, "error": "Fayl tanlanmadi"})
+    ext = PPath(f.filename).suffix.lower()
+    if ext not in (".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico"):
+        return jsonify({"ok": False, "error": "Ruxsat etilmagan format"})
+    safe_name = secure_filename(f.filename)
+    stored = f"{uuid.uuid4().hex[:8]}_{safe_name}"
+    dest = FILES_PATH / stored
+    f.save(str(dest))
+    url = f"/uploads/files/{stored}"
+    audit("image_upload", "project", puuid, safe_name)
+    return jsonify({"ok": True, "url": url, "filename": safe_name})
