@@ -30,6 +30,7 @@ import app.routes.files
 import app.routes.projects
 import app.routes.admin
 import app.routes.api
+import app.routes.features
 
 # ── Yordamchi funksiyalar ──────────────────────────────────────────────────
 from app.utils import local_ip, get_ssid, expiry_checker, uptime_checker

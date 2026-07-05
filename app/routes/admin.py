@@ -183,21 +183,6 @@ def api_monitor():
     })
 
 
-@app.route("/admin/uptime")
-@admin_req
-def admin_uptime():
-    logs = db_exec("SELECT * FROM uptime_logs ORDER BY id DESC LIMIT 1440") or []
-    total = len(logs)
-    up_count = sum(1 for l in logs if l["status"] == "up")
-    uptime_pct = round((up_count / total * 100), 2) if total else 100.0
-    body = f"""
-    <h2 style="color:#fff;margin-bottom:14px">📉 Uptime</h2>
-    <div class="g g4 mb">
-      <div class="stat"><div class="v" style="color:var(--gr)">{uptime_pct}%</div><div class="l">Uptime</div></div>
-      <div class="stat"><div class="v">{total}</div><div class="l">Tekshiruvlar</div></div>
-    </div>"""
-    return _pg("Uptime", body, "uptime")
-
 
 @app.route("/admin/audit")
 @admin_req
