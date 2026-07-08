@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Eslatmalar — Demo (HTML toggle)</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--muted:#9aa6b4;--note-bg:#071028}
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:var(--bg);color:#e6eef8;}
+    .wrap{max-width:980px;margin:24px auto;padding:16px;}
+    header{display:flex;gap:12px;align-items:center;margin-bottom:12px;}
+    h1{font-size:18px;margin:0;}
+    .controls{margin-left:auto;display:flex;gap:8px;align-items:center;}
+    button{background:#0e1722;border:1px solid rgba(255,255,255,0.04);color:#dbe9f8;padding:8px 10px;border-radius:8px;cursor:pointer;}
+    button.positive{background:linear-gradient(90deg,#0ea5a7,#06b6d4);color:#042029;font-weight:600;}
+    .panel{display:flex;gap:16px;}
+    .left{width:360px;}
+    .card{background:var(--card);padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.03);}
+    .add-area textarea{width:100%;height:96px;background:transparent;border:1px dashed rgba(255,255,255,0.04);color:inherit;padding:8px;border-radius:8px;resize:vertical;}
+    .file-row{display:flex;gap:8px;margin-top:8px;align-items:center;}
+    .notes{margin-top:12px;display:flex;flex-direction:column;gap:10px;}
+    .note{background:var(--note-bg);padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);position:relative;}
+    .note .content{min-height:34px;outline:none;}
+    .meta{font-size:12px;color:var(--muted);margin-top:8px;display:flex;justify-content:space-between;align-items:center;}
+    .timestamp{font-family:monospace;font-size:12px;color:var(--muted);}n    .context-menu{position:fixed;background:#021021;border:1px solid rgba(255,255,255,0.04);box-shadow:0 8px 20px rgba(2,6,23,0.6);border-radius:8px;min-width:170px;z-index:9999;display:none;}
+    img.note-img{max-width:100%;border-radius:6px;margin-top:8px;}
+    .small{font-size:12px;color:var(--muted);}n    .toggle {display:flex;gap:8px;align-items:center;}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Eslatmalar (Notes)</h1>
+      <div class="controls">
+        <div class="toggle small">
+          <label><input type="checkbox" id="renderHtml" checked /> HTML ni render qilish</label>
+        </div>
+        <button id="clearAll" title="Barchasini tozalash">Tozalash</button>
+      </div>
+    </header>
+
+    <div class="panel">
+      <div class="left">
+        <div class="card add-area">
+          <label class="small">Yangi eslatma</label>
+          <textarea id="newText" placeholder="Matn yoki HTML teglari yozing (masalan &lt;div&gt;hello&lt;/div&gt;)"></textarea>
+          <div class="file-row">
+            <input type="file" id="newImage" accept="image/*" />
+            <button id="addNote" class="positive">Qo'shish</button>
+            <button id="clearInput">Tozalash</button>
+          </div>
+          <div class="small" style="margin-top:8px;color:var(--muted)">
+            Agar HTML teglarini matn sifatida ko‘rsatmoqchi boʻlsangiz "HTML ni render qilish" ni o‘chirib qo‘ying.
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:1">
+        <div class="card">
+          <label class="small">Eslatmalar</label>
+          <div id="notesList" class="notes"></div>
+          <div id="notesEmpty" class="notes-empty">Hozircha eslatma yo‘q — yangi eslatma qo‘shing.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Storage keys
+    const STORAGE_KEYS = { notes: 'notes_v2', trash: 'trash_v2' };
+
+    function uid(p='id'){ return p+'_'+Math.random().toString(36).slice(2,9); }
+    function nowISO(){ return new Date().toISOString(); }
+    function fmtTime(iso){ return new Date(iso).toLocaleString(); }
+
+    function loadNotes(){ return JSON.parse(localStorage.getItem(STORAGE_KEYS.notes) || '[]'); }
+    function saveNotes(a){ localStorage.setItem(STORAGE_KEYS.notes, JSON.stringify(a)); }
+
+    const newText = document.getElementById('newText');
+    const newImage = document.getElementById('newImage');
+    const addNoteBtn = document.getElementById('addNote');
+    const notesList = document.getElementById('notesList');
+    const notesEmpty = document.getElementById('notesEmpty');
+    const clearInput = document.getElementById('clearInput');
+    const renderHtmlCheckbox = document.getElementById('renderHtml');
+    const clearAll = document.getElementById('clearAll');
+
+    // Escape / unescape helpers
+    function escapeHtml(str){
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+    function nl2br(s){ return s.replace(/\n/g,'<br>'); }
+
+    // When saving we store both rawText and safeHtml (escaped)
+    function addNoteFromInput(){
+      const raw = newText.value || '';
+      const file = newImage.files[0];
+      if(!raw && !file){ alert('Matn yoki rasm qo‘shing.'); return; }
+      const note = { id: uid('note'), createdAt: nowISO(), updatedAt:null, versions:[] };
+
+      // Build safeHtml from raw, preserving tags only if user wants HTML rendering later.
+      // We escape raw to prevent accidental execution; when rendering with HTML enabled we can allow unescaped HTML if desired.
+      note.rawText = raw;
+      // safeHtml is escaped raw -> safe to innerHTML
+      note.safeHtml = nl2br(escapeHtml(raw));
+      note.imageData = null;
+
+      if(file){
+        const reader = new FileReader();
+        reader.onload = function(e){
+          note.imageData = e.target.result;
+          // append image tag to safeHtml (image is DataURL and will be rendered if HTML rendering enabled)
+          note.safeHtml += '<div><img src="'+e.target.result+'" class="note-img" /></div>';
+          saveAndRender(note);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        saveAndRender(note);
+      }
+    }
+
+    function saveAndRender(note){
+      const notes = loadNotes();
+      notes.unshift(note);
+      saveNotes(notes);
+      renderNotes();
+      clearForm();
+    }
+
+    function clearForm(){ newText.value=''; newImage.value=''; }
+
+    // Render notes: depending on checkbox we either set textContent (show tags as text) or innerHTML (render)
+    function renderNotes(){
+      const notes = loadNotes();
+      notesList.innerHTML = '';
+      if(notes.length===0){ notesEmpty.style.display='block'; } else { notesEmpty.style.display='none'; }
+      const shouldRenderHtml = renderHtmlCheckbox.checked;
+
+      notes.forEach(n=>{
+        const el = document.createElement('div');
+        el.className = 'note';
+        el.dataset.id = n.id;
+
+        const content = document.createElement('div');
+        content.className = 'content';
+        content.contentEditable = false;
+
+        if(shouldRenderHtml){
+          // We intentionally render safeHtml (escaped input + any appended image tag)
+          content.innerHTML = n.safeHtml || '';
+        } else {
+          // Show the rawText as plain text so tags like <div> are visible
+          // For images, when showing as text we show a simple placeholder plus the data URL
+          let text = n.rawText || '';
+          if(n.imageData) text += '\n[image] ' + n.imageData;
+          content.textContent = text;
+        }
+
+        el.appendChild(content);
+
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        meta.innerHTML = '<div class="timestamp">Yaratildi: ' + fmtTime(n.createdAt) + (n.updatedAt ? ' · Tahrirlangan: ' + fmtTime(n.updatedAt) : '') + '</div>';
+
+        // Tiny actions
+        const actions = document.createElement('div');
+        actions.style.display='flex'; actions.style.gap='6px';
+        const edit = document.createElement('button'); edit.textContent='Edit';
+        edit.addEventListener('click', ()=> beginEdit(n.id));
+        const del = document.createElement('button'); del.textContent='Del';
+        del.addEventListener('click', ()=> moveToTrash(n.id));
+        actions.appendChild(edit); actions.appendChild(del);
+        meta.appendChild(actions);
+
+        el.appendChild(meta);
+        notesList.appendChild(el);
+      });
+    }
+
+    // Basic edit (open textarea with rawText)
+    function beginEdit(id){
+      const notes = loadNotes();
+      const n = notes.find(x=>x.id===id);
+      if(!n) return;
+      // open simple prompt for demo — you can replace with modal or inline editor
+      const newRaw = prompt('Tahrir qiling (HTML teglarini ham kiriting mumkin):', n.rawText || '');
+      if(newRaw === null) return;
+      // save previous version to versions array
+      n.versions = n.versions || [];
+      n.versions.push({ rawText: n.rawText, safeHtml: n.safeHtml, when: nowISO() });
+      // update
+      n.rawText = newRaw;
+      n.safeHtml = nl2br(escapeHtml(newRaw));
+      n.updatedAt = nowISO();
+      saveNotes(notes);
+      renderNotes();
+      alert('Saqlanildi. Avvalgi versiya karzinkada saqlangan.');
+    }
+
+    // Trash operations (very simple: move to localStorage.trash)
+    function loadTrash(){ return JSON.parse(localStorage.getItem(STORAGE_KEYS.trash) || '[]'); }
+    function saveTrash(a){ localStorage.setItem(STORAGE_KEYS.trash, JSON.stringify(a)); }
+
+    function moveToTrash(noteId){
+      const notes = loadNotes();
+      const idx = notes.findIndex(x=>x.id===noteId);
+      if(idx===-1) return;
+      const [note] = notes.splice(idx,1);
+      const trash = loadTrash();
+      trash.unshift({ id: uid('trash'), type:'deleted', payload:note, when: nowISO() });
+      saveTrash(trash);
+      saveNotes(notes);
+      renderNotes();
+      alert('Eslatma karzinkaga yotqizildi.');
+    }
+
+    // events
+    addNoteBtn.addEventListener('click', addNoteFromInput);
+    clearInput.addEventListener('click', clearForm);
+    renderHtmlCheckbox.addEventListener('change', renderNotes);
+    clearAll.addEventListener('click', ()=>{ if(confirm('Hammasini o‘chirilsinmi?')){ localStorage.removeItem(STORAGE_KEYS.notes); localStorage.removeItem(STORAGE_KEYS.trash); renderNotes(); } });
+
+    // init
+    renderNotes();
+
+    // keyboard shortcut: Ctrl/Cmd+Enter to add
+    newText.addEventListener('keydown', (e)=>{ if((e.ctrlKey||e.metaKey) && e.key==='Enter'){ addNoteFromInput(); } });
+
+  </script>
+</body>
+</html>
